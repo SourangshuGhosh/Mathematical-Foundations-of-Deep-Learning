@@ -1,0 +1,59 @@
+"""
+vc_plot_separate.py
+
+Plot illustrating the VC-dimension theorem (Sauer-Shelah lemma),
+with separate figures for linear and log scale plots.
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+import math
+
+def sauer_bound(n, d):
+    """Compute Sauer bound: sum_{i=0}^d C(n,i)."""
+    s = 0
+    for i in range(0, min(n, d) + 1):
+        s += math.comb(n, i)
+    return s
+
+def growth_function(n_array, d):
+    """Return arrays: m_H(n), 2^n, and Sauer bound for VC-dim = d."""
+    two_pow = np.array([2**n for n in n_array], dtype=np.float64)
+    sauer = np.array([sauer_bound(n, d) for n in n_array], dtype=np.float64)
+    return np.minimum(two_pow, sauer), two_pow, sauer
+
+def plot_vc_bounds_separate(n_max=30, d_values=(0,1,2,3,5,10)):
+    n = np.arange(0, n_max+1)
+
+    # --- Linear scale plot ---
+    plt.figure(figsize=(7,5))
+    for d in d_values:
+        mH, two_pow, sauer = growth_function(n, d)
+        plt.plot(n, mH, marker='o', linestyle='-', label=f'm_H(n), d={d}')
+        plt.plot(n, sauer, linestyle='--', alpha=0.6, 
+                 label=f'Sauer bound (d={d})' if d==d_values[0] else None)
+    plt.plot(n, 2**n, color='k', linestyle=':', linewidth=1.5, label=r'$2^n$ (max)')
+    plt.title('VC growth function $m_H(n)$ (linear scale)')
+    plt.xlabel('n (number of points)')
+    plt.ylabel('number of dichotomies')
+    plt.ylim(bottom=0)
+    plt.legend(loc='upper left', fontsize='small')
+    plt.grid(True, linestyle=':', alpha=0.6)
+    plt.show()
+
+    # --- Log scale plot ---
+    plt.figure(figsize=(7,5))
+    for d in d_values:
+        mH, two_pow, sauer = growth_function(n, d)
+        plt.plot(n, mH, marker='o', linestyle='-', label=f'm_H(n), d={d}')
+    plt.plot(n, 2**n, color='k', linestyle=':', linewidth=1.5, label=r'$2^n$ (max)')
+    plt.title('VC growth function $m_H(n)$ (log scale)')
+    plt.xlabel('n (number of points)')
+    plt.ylabel('number of dichotomies (log scale)')
+    plt.yscale('log')
+    plt.legend(loc='upper left', fontsize='small')
+    plt.grid(True, which='both', linestyle=':', alpha=0.6)
+    plt.show()
+
+if __name__ == '__main__':
+    plot_vc_bounds_separate(n_max=30, d_values=(0,1,2,3,5,10))
