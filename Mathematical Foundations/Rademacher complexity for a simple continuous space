@@ -1,0 +1,63 @@
+"""
+rademacher_continuous_comparison.py
+
+Approximate and plot the Rademacher complexity for a simple continuous space
+with hypothesis class H = { h_w(x) = w * x,  w ∈ [-1, 1] },
+and compare against the theoretical O(1/sqrt(n)) decay.
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def rademacher_complexity(n, num_trials=500, num_sigma=200):
+    """
+    Estimate empirical Rademacher complexity for sample size n.
+    
+    Args:
+        n : int
+            Number of sample points from [0,1].
+        num_trials : int
+            Number of Monte Carlo repetitions for averaging over S.
+        num_sigma : int
+            Number of sigma (Rademacher vectors) draws per trial.
+    Returns:
+        float : estimated Rademacher complexity
+    """
+    complexities = []
+    for _ in range(num_trials):
+        # Step 1: sample data points from [0,1]
+        X = np.random.rand(n)
+        
+        # Step 2: compute empirical Rademacher complexity
+        trial_vals = []
+        for _ in range(num_sigma):
+            sigma = np.random.choice([-1, 1], size=n)
+            # Sup over w in [-1,1]: reduces to absolute average of sigma_i * x_i
+            val = abs(np.sum(sigma * X) / n)
+            trial_vals.append(val)
+        complexities.append(np.mean(trial_vals))
+    
+    return np.mean(complexities)
+
+def plot_rademacher_complexity(max_n=100, step=5):
+    ns = range(5, max_n+1, step)
+    values = [rademacher_complexity(n) for n in ns]
+
+    # Theoretical O(1/sqrt(n)) curve (scaled to match empirical at first point)
+    c = values[0] * np.sqrt(ns[0])  # scaling constant
+    theo_curve = [c / np.sqrt(n) for n in ns]
+
+    plt.figure(figsize=(8,5))
+    plt.plot(ns, values, marker='o', linestyle='-', color='b',
+             label='Estimated Rademacher complexity')
+    plt.plot(ns, theo_curve, linestyle='--', color='r',
+             label=r'Theoretical $\mathcal{O}(1/\sqrt{n})$')
+    plt.title('Rademacher Complexity vs. 1/sqrt(n) Bound')
+    plt.xlabel('Sample size n')
+    plt.ylabel('Rademacher complexity')
+    plt.grid(True, linestyle=':')
+    plt.legend()
+    plt.show()
+
+if __name__ == "__main__":
+    plot_rademacher_complexity(max_n=100, step=5)
