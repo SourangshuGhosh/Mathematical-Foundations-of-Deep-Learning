@@ -1,0 +1,74 @@
+"""
+rademacher_comparison.py
+
+Compare Rademacher complexity for:
+1. Linear functions: h_w(x) = w * x,  w ∈ [-1,1]
+2. Quadratic polynomials: h(x) = a x^2 + b x + c,  a,b,c ∈ [-1,1]
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def rademacher_complexity_linear(n, num_trials=300, num_sigma=100):
+    """Rademacher complexity for linear class h(x) = w x, w ∈ [-1,1]."""
+    complexities = []
+    for _ in range(num_trials):
+        X = np.random.rand(n)
+        trial_vals = []
+        for _ in range(num_sigma):
+            sigma = np.random.choice([-1, 1], size=n)
+            val = abs(np.sum(sigma * X) / n)
+            trial_vals.append(val)
+        complexities.append(np.mean(trial_vals))
+    return np.mean(complexities)
+
+def rademacher_complexity_quadratic(n, num_trials=300, num_sigma=100):
+    """Rademacher complexity for quadratic class h(x) = a x^2 + b x + c, a,b,c ∈ [-1,1]."""
+    complexities = []
+    for _ in range(num_trials):
+        X = np.random.rand(n)
+        trial_vals = []
+        for _ in range(num_sigma):
+            sigma = np.random.choice([-1, 1], size=n)
+
+            # coefficients for a, b, c
+            coef_a = np.sum(sigma * (X**2)) / n
+            coef_b = np.sum(sigma * X) / n
+            coef_c = np.sum(sigma) / n
+
+            # supremum over a,b,c in [-1,1]: sum of absolute coefficients
+            val = abs(coef_a) + abs(coef_b) + abs(coef_c)
+            trial_vals.append(val)
+        complexities.append(np.mean(trial_vals))
+    return np.mean(complexities)
+
+def plot_comparison(max_n=100, step=5):
+    ns = range(5, max_n+1, step)
+
+    # Compute empirical complexities
+    values_linear = [rademacher_complexity_linear(n) for n in ns]
+    values_quadratic = [rademacher_complexity_quadratic(n) for n in ns]
+
+    # Theoretical O(1/sqrt(n)) comparison (scaled)
+    c_lin = values_linear[0] * np.sqrt(ns[0])
+    c_quad = values_quadratic[0] * np.sqrt(ns[0])
+    theo_lin = [c_lin / np.sqrt(n) for n in ns]
+    theo_quad = [c_quad / np.sqrt(n) for n in ns]
+
+    # Plot results
+    plt.figure(figsize=(9,6))
+    plt.plot(ns, values_linear, 'o-b', label='Linear (empirical)')
+    plt.plot(ns, theo_lin, '--b', label='Linear O(1/sqrt(n))')
+
+    plt.plot(ns, values_quadratic, 'o-r', label='Quadratic (empirical)')
+    plt.plot(ns, theo_quad, '--r', label='Quadratic O(1/sqrt(n))')
+
+    plt.title('Rademacher Complexity: Linear vs Quadratic Function Classes')
+    plt.xlabel('Sample size n')
+    plt.ylabel('Rademacher complexity')
+    plt.grid(True, linestyle=':')
+    plt.legend()
+    plt.show()
+
+if __name__ == "__main__":
+    plot_comparison(max_n=100, step=5)
