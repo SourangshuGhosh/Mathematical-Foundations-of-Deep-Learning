@@ -1,0 +1,108 @@
+"""
+sobolev_visualization.py
+
+Two separate figures illustrating key parts of the Sobolev Embedding Theorem:
+
+- Figure A: Sobolev conjugate q* = n p / (n - k p) when k p < n.
+            Shades the admissible region q <= q*(p).
+- Figure B: Hölder exponent alpha = k - n/p for the continuous embedding when k p > n.
+
+Author: ChatGPT
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def q_star(p, n, k):
+    """
+    Sobolev conjugate q* = n p / (n - k p) for kp < n.
+    Return np.inf where kp >= n.
+    """
+    denom = n - k * p
+    q = np.full_like(p, np.inf, dtype=float)
+    mask = denom > 0
+    q[mask] = (n * p[mask]) / denom[mask]
+    return q
+
+def holder_alpha(p, n, k):
+    """
+    Hölder exponent alpha = k - n/p (valid when k - n/p in (0,1], 
+    i.e., when kp > n but small enough that fractional part is in (0,1]).
+    We return alpha even when >1 — the user can interpret as higher regularity.
+    """
+    return k - n / p
+
+def plot_sobolev_conjugate(p_range, dims=(1,2,3), ks=(1,2), qcap=1e4):
+    """
+    Produce Figure A: q* vs p for different n and k.
+    p_range: array of p values to evaluate
+    dims: tuple/list of space dimensions n to plot
+    ks: list of k values (smoothness order) to plot
+    qcap: finite cap for plotting where q* -> inf (for visualization)
+    """
+    for k in ks:
+        plt.figure(figsize=(8,5))
+        for n in dims:
+            p = p_range
+            q = q_star(p, n, k)
+            # For plotting, cap extremely large q values (visualization only)
+            q_plot = np.minimum(q, qcap)
+            plt.plot(p, q_plot, label=f'n={n}, k={k}')
+            # Shade region q <= q*(p)
+            plt.fill_between(p, 0, q_plot, alpha=0.12)
+
+            # mark the critical p0 = n/k where q* -> inf
+            pcrit = n / k
+            plt.axvline(pcrit, linestyle='--', alpha=0.6, color='gray')
+            plt.text(pcrit*1.01, plt.ylim()[1]*0.6, f'p=n/k={pcrit:.2f}', rotation=90,
+                     alpha=0.7, va='center', fontsize=9)
+
+        plt.ylim(bottom=0)
+        plt.yscale('linear')  # linear is fine; if qcap large, consider log scale
+        plt.xlabel('p')
+        plt.ylabel('q* (Sobolev conjugate, capped for visualization)')
+        plt.title(f'Sobolev conjugate $q^*=n p/(n - k p)$ (k = {k})')
+        plt.legend()
+        plt.grid(True, linestyle=':', alpha=0.6)
+        plt.tight_layout()
+        plt.show()
+
+def plot_holder_exponent(p_range, dims=(1,2,3), ks=(1,2)):
+    """
+    Produce Figure B: Hölder exponent alpha = k - n/p for p > n/k.
+    """
+    for k in ks:
+        plt.figure(figsize=(8,5))
+        for n in dims:
+            p = p_range
+            alpha = holder_alpha(p, n, k)
+            # Only plot region where kp > n (i.e., p > n/k)
+            mask = p > (n / k)
+            if mask.any():
+                plt.plot(p[mask], alpha[mask], label=f'n={n}, k={k}')
+                # Shade where alpha > 0 (continuous embedding)
+                plt.fill_between(p[mask], 0, alpha[mask], alpha=0.12)
+                # annotate typical small-p region
+                pcrit = n / k
+                plt.axvline(pcrit, linestyle='--', alpha=0.5, color='gray')
+                plt.text(pcrit*1.01, 0.02, f'p=n/k={pcrit:.2f}', rotation=90,
+                         alpha=0.7, va='bottom', fontsize=9)
+
+        plt.axhline(0, color='k', linewidth=0.6, alpha=0.6)
+        plt.xlabel('p')
+        plt.ylabel(r'$\alpha = k - \frac{n}{p}$ (Hölder exponent)')
+        plt.title(f'Hölder exponent for embedding $W^{{{k}},p}(\\Omega) \\hookrightarrow C^{{0,\\alpha}}$ (k = {k})')
+        plt.legend()
+        plt.grid(True, linestyle=':', alpha=0.6)
+        plt.tight_layout()
+        plt.show()
+
+if __name__ == "__main__":
+    # parameter grid for p (avoid p at critical point exactly where denom=0)
+    p_vals = np.linspace(1.01, 50, 1000)
+
+    # Figure A: q* vs p for k=1 and k=2 (separate figures)
+    plot_sobolev_conjugate(p_vals, dims=(1,2,3), ks=(1,2), qcap=5e2)
+
+    # Figure B: Hölder exponent alpha vs p for p > n/k
+    plot_holder_exponent(p_vals, dims=(1,2,3), ks=(1,2))
