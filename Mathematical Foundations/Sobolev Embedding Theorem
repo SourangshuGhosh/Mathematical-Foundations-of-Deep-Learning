@@ -7,7 +7,6 @@ Two separate figures illustrating key parts of the Sobolev Embedding Theorem:
             Shades the admissible region q <= q*(p).
 - Figure B: Hölder exponent alpha = k - n/p for the continuous embedding when k p > n.
 
-Author: ChatGPT
 """
 
 import numpy as np
