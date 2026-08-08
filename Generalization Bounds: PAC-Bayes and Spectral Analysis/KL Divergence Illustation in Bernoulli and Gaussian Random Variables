@@ -1,0 +1,70 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# --- Bernoulli KL divergence ---
+def kl_bern(p, q):
+    eps = 1e-12
+    p = np.clip(p, eps, 1-eps)
+    q = np.clip(q, eps, 1-eps)
+    return p*np.log(p/q) + (1-p)*np.log((1-p)/(1-q))
+
+# --- Gaussian KL divergence KL(N(mu_q, sigma_q^2) || N(mu_p, sigma_p^2)) ---
+def kl_gauss(mu_q, sigma_q, mu_p, sigma_p):
+    return np.log(sigma_p/sigma_q) + (sigma_q**2 + (mu_q-mu_p)**2)/(2*sigma_p**2) - 0.5
+
+# --- Bernoulli KL plots ---
+ps = np.linspace(0.001, 0.999, 100)
+qs = np.linspace(0.001, 0.999, 100)
+P, Q = np.meshgrid(ps, qs)
+KL = kl_bern(P, Q)
+
+plt.figure(figsize=(7,6))
+plt.contourf(P, Q, KL, levels=50, cmap="viridis")
+plt.colorbar(label="KL(Bern(p) || Bern(q))")
+plt.xlabel("p")
+plt.ylabel("q")
+plt.title("KL Divergence between Bernoulli(p) and Bernoulli(q)")
+plt.show()
+
+plt.figure(figsize=(8,6))
+for p in [0.1, 0.3, 0.5, 0.7, 0.9]:
+    plt.plot(qs, kl_bern(p, qs), label=f"p={p}")
+plt.xlabel("q")
+plt.ylabel("KL(Bern(p) || Bern(q))")
+plt.title("KL Divergence as function of q for fixed p")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# --- Gaussian KL plots ---
+mu_qs = np.linspace(-2, 2, 100)
+mu_ps = np.linspace(-2, 2, 100)
+MUQ, MUP = np.meshgrid(mu_qs, mu_ps)
+
+# Fix sigma_q, sigma_p
+sigma_q = 1.0
+sigma_p = 1.0
+KL_gauss = kl_gauss(MUQ, sigma_q, MUP, sigma_p)
+
+plt.figure(figsize=(7,6))
+plt.contourf(MUQ, MUP, KL_gauss, levels=50, cmap="plasma")
+plt.colorbar(label="KL(N($\mu_q$,1) || N($\mu_p$,1))")
+plt.xlabel("$\mu_q$")
+plt.ylabel("$\mu_p$")
+plt.title("Gaussian KL Divergence (equal variances)")
+plt.show()
+
+# Vary sigma values
+sigmas = [0.5, 1.0, 2.0]
+plt.figure(figsize=(8,6))
+mu_q = 0.0
+mu_p = 0.0
+for sigma_q in sigmas:
+    vals = [kl_gauss(mu_q, sigma_q, mu_p, s) for s in np.linspace(0.1, 3.0, 200)]
+    plt.plot(np.linspace(0.1, 3.0, 200), vals, label=f"$\sigma_q$={sigma_q}")
+plt.xlabel("$\sigma_p$")
+plt.ylabel("KL$(N(\mu_q,\sigma_q^2) || N(\mu_p,\sigma_p^2))$")
+plt.title("Gaussian KL Divergence vs $\sigma_p$ ($\mu_q=\mu_p=0$)")
+plt.legend()
+plt.grid(True)
+plt.show()
