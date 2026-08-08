@@ -1,0 +1,51 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Domain
+def grid(N=2000):
+    return np.linspace(0, 1, N)
+
+x = grid()
+
+# Define some H_0^1(0,1) test functions (vanish at boundary)
+def u1(x): return np.sin(np.pi * x)
+def u2(x): return x * (1-x)
+def u3(x): return np.sin(2*np.pi*x) * (1-x)
+def u4(x): return np.sqrt(x*(1-x)) * np.sin(np.pi*x)
+
+functions = [u1, u2, u3, u4]
+labels = ["sin(pi x)", "x(1-x)", "sin(2pi x)(1-x)", "sqrt(x(1-x)) sin(pi x)"]
+
+# L2 norm helper
+def L2_norm(f, x):
+    return np.sqrt(np.trapz(f(x)**2, x))
+
+# Derivative approximation
+def derivative(f, x):
+    h = x[1] - x[0]
+    return np.gradient(f(x), h)
+
+ratios = []
+for f in functions:
+    norm_u = L2_norm(f, x)
+    norm_du = L2_norm(lambda z: derivative(f, x), x)
+    ratios.append(norm_u / norm_du)
+
+# Plot functions
+plt.figure(figsize=(10,6))
+for f, label in zip(functions, labels):
+    plt.plot(x, f(x), label=label)
+plt.title("Test Functions in H_0^1(0,1)")
+plt.xlabel("x")
+plt.ylabel("u(x)")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Plot ratios ||u|| / ||u'||
+plt.figure(figsize=(8,5))
+plt.bar(labels, ratios)
+plt.title("Sobolev Poincare Inequality Ratios")
+plt.ylabel("Ratio")
+plt.grid(True, axis='y')
+plt.show()
