@@ -1,0 +1,59 @@
+"""
+Fourier analysis of expressivity: Compare Fourier spectrum of a target function vs a shallow neural network approximation.
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.neural_network import MLPRegressor
+
+# --- Target function ---
+def f(x):
+    # mixture of low + high frequency components
+    return np.sin(2*np.pi*3*x) + 0.5*np.sin(2*np.pi*15*x)
+
+# --- Sample training data ---
+N = 512
+X = np.linspace(0, 1, N).reshape(-1, 1)
+y = f(X).ravel()
+
+# --- Train shallow neural network ---
+nn = MLPRegressor(hidden_layer_sizes=(20,), activation='relu',
+                  solver='lbfgs', max_iter=2000, random_state=0)
+nn.fit(X, y)
+y_pred = nn.predict(X)
+
+# --- Fourier analysis ---
+def fourier_spectrum(signal):
+    # Discrete Fourier Transform
+    N = len(signal)
+    fft_vals = np.fft.fft(signal) / N
+    freqs = np.fft.fftfreq(N, d=1/N)  # normalized to [0,1]
+    return freqs[:N//2], np.abs(fft_vals[:N//2])
+
+freqs, F_true = fourier_spectrum(y)
+_, F_pred = fourier_spectrum(y_pred)
+
+# --- Plots ---
+#plt.figure(figsize=(12,5))
+
+# Real-space comparison
+plt.figure(figsize=(7,5));
+plt.plot(X, y, label="Target f(x)", lw=2)
+plt.plot(X, y_pred, "--", label="NN Approximation", lw=2)
+plt.title("Target vs NN approximation (real space)")
+plt.xlabel("x")
+plt.ylabel("f(x)")
+plt.legend()
+plt.grid(alpha=0.4)
+plt.show()
+
+# --- Fourier spectrum comparison ---
+plt.figure(figsize=(7,5));
+plt.stem(freqs, F_true, linefmt='b-', markerfmt='bo', basefmt=" ", label="Target spectrum")
+plt.stem(freqs, F_pred, linefmt='r--', markerfmt='ro', basefmt=" ", label="NN spectrum")
+plt.title("Fourier Spectrum: Expressivity Analysis")
+plt.xlabel("frequency index k")
+plt.ylabel("Amplitude")
+plt.legend()
+plt.grid(alpha=0.4)
+plt.show()
