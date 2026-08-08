@@ -1,0 +1,73 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Target function
+def f(x):
+    return np.sin(2 * np.pi * x)
+
+# Data
+x_np = np.linspace(0, 1, 200)
+y_np = f(x_np)
+
+x = torch.tensor(x_np, dtype=torch.float32).view(-1, 1)
+y = torch.tensor(y_np, dtype=torch.float32).view(-1, 1)
+
+# Define simple feedforward network with variable hidden size
+class Net(nn.Module):
+    def __init__(self, hidden_size):
+        super(Net, self).__init__()
+        self.hidden = nn.Linear(1, hidden_size)
+        self.activation = nn.Tanh()  # non-linear activation
+        self.output = nn.Linear(hidden_size, 1)
+
+    def forward(self, x):
+        return self.output(self.activation(self.hidden(x)))
+
+# Train and plot approximations for different hidden sizes
+hidden_sizes = [2, 5, 10, 20, 50]
+errors = []
+
+plt.figure(figsize=(12, 8))
+
+for i, h in enumerate(hidden_sizes, 1):
+    net = Net(h)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(net.parameters(), lr=0.05)
+
+    # Train
+    for epoch in range(2000):
+        optimizer.zero_grad()
+        y_pred = net(x)
+        loss = criterion(y_pred, y)
+        loss.backward()
+        optimizer.step()
+
+    # Evaluate
+    with torch.no_grad():
+        y_fit = net(x).numpy()
+        error = np.sqrt(np.trapz((y_fit.flatten() - y_np)**2, x_np))
+        errors.append(error)
+
+    plt.subplot(2, 3, i)
+    plt.plot(x_np, y_np, 'b-', label="Target sin(2πx)")
+    plt.plot(x_np, y_fit, 'r--', label=f"NN approx (hidden={h})")
+    plt.title(f"Hidden layer size = {h}")
+    plt.legend()
+    plt.grid(True)
+
+plt.suptitle("Universal Approximation Theorem Illustration\n"
+             "Single hidden-layer NN approximating sin(2πx)")
+plt.tight_layout(rect=[0, 0, 1, 0.96])
+plt.show()
+
+# Plot error vs hidden size
+plt.figure(figsize=(7,5))
+plt.plot(hidden_sizes, errors, marker='o')
+plt.title("Approximation Error vs Hidden Layer Size")
+plt.xlabel("Hidden layer size")
+plt.ylabel(r"$L^2$ error")
+plt.grid(True)
+plt.show()
