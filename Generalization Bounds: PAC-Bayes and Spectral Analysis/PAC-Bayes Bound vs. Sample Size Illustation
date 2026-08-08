@@ -47,4 +47,4 @@ for idx, kl in enumerate(kl_values):
 
 axes[-1].set_xlabel("Empirical Risk $\\hat{L}(Q)$")
 plt.tight_layout()
-plt.show()   
+plt.show()
