@@ -1,0 +1,50 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import brentq
+
+# --- KL divergence between Bernoulli(p) and Bernoulli(q) ---
+def kl_bern(p, q):
+    eps = 1e-12
+    p = np.clip(p, eps, 1-eps)
+    q = np.clip(q, eps, 1-eps)
+    return p*np.log(p/q) + (1-p)*np.log((1-p)/(1-q))
+
+# --- PAC-Bayes bound inversion helper ---
+def pac_bayes_bound(emp_risk, kl_qp, n, delta=0.05):
+    rhs = (kl_qp + np.log(2*np.sqrt(n)/delta)) / n
+
+    # If RHS is too large, return trivial bound = 1
+    if rhs >= np.log(2):
+        return 1.0
+
+    # Solve for q >= emp_risk s.t. KL(emp_risk || q) = rhs
+    def f(q):
+        return kl_bern(emp_risk, q) - rhs
+
+    try:
+        return brentq(f, emp_risk+1e-9, 1-1e-9)
+    except ValueError:
+        return 1.0
+
+# Parameters
+delta = 0.05
+emp_risks = np.linspace(0.0, 0.5, 100)
+kl_values = [0.5, 2.0, 5.0]
+sample_sizes = [100, 500, 1000, 5000]
+
+fig, axes = plt.subplots(len(kl_values), 1, figsize=(8, 5*len(kl_values)), sharex=True)
+
+for idx, kl in enumerate(kl_values):
+    ax = axes[idx]
+    for n in sample_sizes:
+        bounds = [pac_bayes_bound(r, kl, n, delta) for r in emp_risks]
+        ax.plot(emp_risks, bounds, label=f"n={n}")
+    ax.plot(emp_risks, emp_risks, 'k--', label="Empirical risk")
+    ax.set_title(f"PAC-Bayes Bound (KL(Q||P)={kl})")
+    ax.set_ylabel("True Risk Bound $L(Q)$")
+    ax.grid(True)
+    ax.legend()
+
+axes[-1].set_xlabel("Empirical Risk $\\hat{L}(Q)$")
+plt.tight_layout()
+plt.show()   
