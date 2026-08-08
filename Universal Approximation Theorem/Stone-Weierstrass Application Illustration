@@ -1,0 +1,95 @@
+"""
+Visual demonstration of the Stone-Weierstrass (Weierstrass) theorem via Bernstein polynomial approximation on [0,1].
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+import math
+from scipy.special import comb  # for binomial coefficients
+
+# ---------- Choose a continuous target function on [0,1] ----------
+def f(x):
+    # A continuous but non-differentiable example (kink at x=0.3)
+    return np.abs(x - 0.3)
+
+# alternative examples:
+# def f(x): return np.sin(2*np.pi*x) + 0.5*x**2
+# def f(x): return np.where(x<0.5, x, 1-x)  # continuous triangle-like
+
+# dense grid for plotting and sup-norm estimation
+X = np.linspace(0.0, 1.0, 2001)
+fX = f(X)
+
+# ---------- Bernstein polynomial B_n(f) ----------
+def bernstein_approx(f_vals_at_nodes, n, x_points):
+    """
+    Compute Bernstein polynomial of degree n using values f(k/n) provided in f_vals_at_nodes.
+    f_vals_at_nodes should be array of length n+1: [f(0), f(1/n), ..., f(1)].
+    x_points may be a numpy array.
+    Returns B_n(f)(x_points).
+    """
+    x = x_points
+    # Use vectorized evaluation: sum_{k=0}^n f(k/n) * C(n,k) x^k (1-x)^{n-k}
+    k = np.arange(n+1)
+    # shape (n+1, len(x))
+    # compute basis B_{n,k}(x) for each k
+    # to avoid overflow for large n we compute in logspace if needed,
+    # but for moderate n ( <= 500) direct comb is fine.
+    basis = np.array([comb(n, ki) * (x**ki) * ((1-x)**(n-ki)) for ki in k])
+    # weighted sum
+    return np.dot(f_vals_at_nodes, basis)
+
+# ---------- Compute approximations for several n ----------
+degrees = [2, 5, 10, 20, 50, 100]  # pick some n's to show
+approxs = {}
+sup_errors = []
+
+for n in degrees:
+    nodes = np.linspace(0.0, 1.0, n+1)
+    f_nodes = f(nodes)               # f(k/n)
+    BnX = bernstein_approx(f_nodes, n, X)
+    approxs[n] = BnX
+    sup_err = np.max(np.abs(BnX - fX))
+    sup_errors.append(sup_err)
+    print(f"n = {n:3d}  sup-norm error = {sup_err:.6e}")
+
+# ---------- Figure 1: target function and selected approximations ----------
+plt.figure(figsize=(10, 6))
+plt.plot(X, fX, label="Target function f(x)", linewidth=2, color='black')
+for n in degrees:
+    plt.plot(X, approxs[n], label=f"Bernstein B_{n}(f)", linewidth=1)
+plt.title("Stone Weierstrass (Weierstrass) demo: Bernstein polynomial approximations")
+plt.xlabel("x in [0,1]")
+plt.ylabel("function value")
+plt.legend()
+plt.grid(alpha=0.4)
+plt.tight_layout()
+plt.show()
+
+# ---------- Figure 2: zoom near the kink to show uniform approximation ----------
+zoom_center = 0.3
+zoom_radius = 0.12
+mask = (X >= zoom_center - zoom_radius) & (X <= zoom_center + zoom_radius)
+plt.figure(figsize=(10, 4.5))
+plt.plot(X[mask], fX[mask], label="Target f(x)", linewidth=2, color='black')
+for n in degrees:
+    plt.plot(X[mask], approxs[n][mask], label=f"B_{n}", linewidth=1)
+plt.title("Zoom near the kink convergence is uniform")
+plt.xlabel("x")
+plt.ylabel("value")
+plt.legend()
+plt.grid(alpha=0.4)
+plt.tight_layout()
+plt.show()
+
+# ---------- Figure 3: sup-norm error vs n (log-scale) ----------
+plt.figure(figsize=(7,5))
+plt.plot(degrees, sup_errors, marker='o', linestyle='-')
+plt.xscale('log')
+plt.yscale('log')
+plt.title("Sup-norm error  (log-log scale)")
+plt.xlabel("Degree n (log scale)")
+plt.ylabel("Sup-norm error (log scale)")
+plt.grid(which='both', alpha=0.4)
+plt.tight_layout()
+plt.show()
