@@ -1,0 +1,34 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Define domain
+x = np.linspace(0, 1, 500)
+
+# Construct a bounded sequence in H^1(0,1)
+# u_n(x) = sin(n*pi*x) / n  --> bounded in H^1 but converges strongly in L^2 to 0
+
+def u(n, x):
+    return np.sin(n * np.pi * x) / n
+
+# Plot some functions from the sequence
+plt.figure(figsize=(10,6))
+for n in [1, 2, 5, 10, 20, 50]:
+    plt.plot(x, u(n, x), label=f"u_{n}(x)")
+
+plt.title("Rellich-Kondrachov Compactness Theorem Illustration\n"
+          "Sequence bounded in H^1 but converging strongly in L^2")
+plt.xlabel("x")
+plt.ylabel("u_n(x)")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Show L2 norm convergence to 0
+L2_norms = [np.trapz(u(n, x)**2, x)**0.5 for n in range(1, 51)]
+plt.figure(figsize=(8,5))
+plt.plot(range(1, 51), L2_norms, marker='o')
+plt.title("L2 norm of u_n converging to 0 (Strong convergence in L2)")
+plt.xlabel("n")
+plt.ylabel(r"$||u_n||_{L^2}$")
+plt.grid(True)
+plt.show()
