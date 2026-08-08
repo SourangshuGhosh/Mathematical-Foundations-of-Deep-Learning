@@ -1,0 +1,75 @@
+"""
+Compare Fourier expressivity of different neural network architectures (shallow vs deep, ReLU vs tanh).
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.neural_network import MLPRegressor
+
+# --- Target function with multiple frequencies ---
+def f(x):
+    return np.sin(2*np.pi*3*x) + 0.5*np.sin(2*np.pi*15*x)
+
+# --- Training data ---
+N = 512
+X = np.linspace(0, 1, N).reshape(-1, 1)
+y = f(X).ravel()
+
+# --- Helper: compute Fourier spectrum ---
+def fourier_spectrum(signal):
+    N = len(signal)
+    fft_vals = np.fft.fft(signal) / N
+    freqs = np.fft.fftfreq(N, d=1/N)  # normalized
+    return freqs[:N//2], np.abs(fft_vals[:N//2])
+
+freqs, F_true = fourier_spectrum(y)
+
+# --- Define architectures ---
+architectures = {
+    "Shallow ReLU (1x20)": MLPRegressor(hidden_layer_sizes=(20,), activation='relu',
+                                        solver='lbfgs', max_iter=3000, random_state=0),
+    "Deep ReLU (3x20)": MLPRegressor(hidden_layer_sizes=(20,20,20), activation='relu',
+                                     solver='lbfgs', max_iter=3000, random_state=0),
+    "Shallow tanh (1x20)": MLPRegressor(hidden_layer_sizes=(20,), activation='tanh',
+                                        solver='lbfgs', max_iter=3000, random_state=0),
+    "Deep tanh (3x20)": MLPRegressor(hidden_layer_sizes=(20,20,20), activation='tanh',
+                                     solver='lbfgs', max_iter=3000, random_state=0),
+}
+
+# --- Train and collect spectra ---
+spectra = {}
+preds = {}
+
+for name, model in architectures.items():
+    model.fit(X, y)
+    y_pred = model.predict(X)
+    preds[name] = y_pred
+    _, F_pred = fourier_spectrum(y_pred)
+    spectra[name] = F_pred
+    print(f"{name} trained.")
+
+# --- Plot: function fits ---
+plt.figure(figsize=(12,6))
+plt.plot(X, y, 'k', lw=2, label="Target f(x)")
+for name, y_pred in preds.items():
+    plt.plot(X, y_pred, label=name, lw=1.5)
+plt.title("Target vs Approximations (Real Space)")
+plt.xlabel("x")
+plt.ylabel("f(x)")
+plt.legend()
+plt.grid(alpha=0.4)
+plt.tight_layout()
+plt.show()
+
+# --- Plot: Fourier spectra comparison ---
+plt.figure(figsize=(12,6))
+plt.plot(freqs, F_true, 'k-', lw=2, label="Target Spectrum")
+for name, F_pred in spectra.items():
+    plt.plot(freqs, F_pred, label=name)
+plt.title("Fourier Spectrum: Expressivity of Architectures")
+plt.xlabel("frequency index k")
+plt.ylabel("Amplitude")
+plt.legend()
+plt.grid(alpha=0.4)
+plt.tight_layout()
+plt.show()
