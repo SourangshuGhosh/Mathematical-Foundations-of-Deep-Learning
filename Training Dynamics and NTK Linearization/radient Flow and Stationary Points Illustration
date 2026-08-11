@@ -1,0 +1,59 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import sympy as sp
+
+# ============================
+# 1. Define the function f(x,y)
+# ============================
+x, y = sp.symbols('x y')
+f = x**3 - 3*x*y**2   # Example: a saddle-like function (Monkey Saddle)
+
+# Gradient
+grad_f = [sp.diff(f, var) for var in (x, y)]
+
+# ==============================
+# 2. Solve for stationary points
+# ==============================
+stationary_points = sp.solve(grad_f, (x, y), dict=True)
+stationary_points = [(float(p[x]), float(p[y])) for p in stationary_points]
+
+print("Stationary Points:", stationary_points)
+
+# ===================================
+# 3. Convert symbolic to numerical fn
+# ===================================
+f_num = sp.lambdify((x, y), f, 'numpy')
+grad_f_num = [sp.lambdify((x, y), grad, 'numpy') for grad in grad_f]
+
+# =====================================
+# 4. Create meshgrid for vector field
+# =====================================
+X, Y = np.meshgrid(np.linspace(-2, 2, 30), np.linspace(-2, 2, 30))
+U = grad_f_num[0](X, Y)   # df/dx
+V = grad_f_num[1](X, Y)   # df/dy
+
+# Normalize arrows for better visualization
+N = np.sqrt(U**2 + V**2)
+U, V = U/N, V/N
+
+# =========================
+# 5. Plot gradient flow
+# =========================
+plt.figure(figsize=(7,6))
+
+# Function contour
+plt.contour(X, Y, f_num(X, Y), levels=20, cmap="viridis")
+
+# Gradient flow (vector field)
+plt.quiver(X, Y, -U, -V, color="red", alpha=0.6)  # negative for gradient descent flow
+
+# Stationary points
+for (sx, sy) in stationary_points:
+    plt.plot(sx, sy, 'bo', markersize=10, label="Stationary Point")
+
+plt.title("Gradient Flow and Stationary Points")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.legend()
+plt.grid(True)
+plt.show()
