@@ -1,0 +1,44 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# --- Renyi divergence for univariate Gaussians ---
+def renyi_gauss(mu_p, sigma_p, mu_q, sigma_q, alpha):
+    if alpha == 1:
+        raise ValueError("Alpha=1 gives KL divergence, not Renyi.")
+    sigma_alpha2 = alpha * sigma_p**2 + (1-alpha) * sigma_q**2
+    term1 = (alpha / (2*(1-alpha))) * np.log(sigma_q**2 / sigma_alpha2)
+    term2 = (alpha * (mu_p - mu_q)**2) / (2*sigma_alpha2)
+    return term1 + term2
+
+# Parameters
+alphas = np.linspace(0.1, 5.0, 200)
+mu_p, mu_q = 0.0, 1.0
+sigma_p, sigma_q = 1.0, 1.0
+
+# --- Plot Renyi divergence vs alpha ---
+vals = [renyi_gauss(mu_p, sigma_p, mu_q, sigma_q, a) for a in alphas]
+plt.figure(figsize=(8,6))
+plt.plot(alphas, vals)
+plt.xlabel(r"Renyi order $\alpha$")
+plt.ylabel(r"$D_{\alpha}( N(0,1) || N(1,1) )$")
+plt.title(fr"Renyi Divergence between Gaussians vs. $\alpha$")
+plt.grid(True)
+plt.show()
+
+# --- Heatmap over mu_p, mu_q for fixed alpha ---
+mu_vals = np.linspace(-2, 2, 100)
+MU_P, MU_Q = np.meshgrid(mu_vals, mu_vals)
+alpha = 2.0
+
+REN = np.zeros_like(MU_P)
+for i in range(len(mu_vals)):
+    for j in range(len(mu_vals)):
+        REN[i,j] = renyi_gauss(MU_P[i,j], sigma_p, MU_Q[i,j], sigma_q, alpha)
+
+plt.figure(figsize=(7,6))
+plt.contourf(MU_P, MU_Q, REN, levels=50, cmap="magma")
+plt.colorbar(label=fr"Renyi Divergence $D_{{{alpha}}}$")
+plt.xlabel(r"$\mu_p$")
+plt.ylabel(r"$\mu_q$")
+plt.title(fr"Renyi Divergence Heatmap ($\alpha$={alpha}, $\sigma_p=\sigma_q=1$)")
+plt.show()
