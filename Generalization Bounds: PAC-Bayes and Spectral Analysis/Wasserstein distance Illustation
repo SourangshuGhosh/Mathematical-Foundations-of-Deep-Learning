@@ -1,0 +1,47 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# --- Wasserstein-2 distance between univariate Gaussians ---
+def wasserstein_gauss(mu_p, sigma_p, mu_q, sigma_q):
+    return np.sqrt((mu_p - mu_q)**2 + (sigma_p - sigma_q)**2)
+
+# --- Plot Wasserstein distance as a function of mean difference ---
+mu_diffs = np.linspace(-3, 3, 200)
+sigma_p, sigma_q = 1.0, 1.0
+W_means = [wasserstein_gauss(mu, sigma_p, 0.0, sigma_q) for mu in mu_diffs]
+
+plt.figure(figsize=(8,6))
+plt.plot(mu_diffs, W_means)
+plt.xlabel(r"$\mu_p - \mu_q$")
+plt.ylabel(r"$W_2$")
+plt.title("Wasserstein Distance vs Mean Difference ($\sigma_p = \sigma_q = 1$)")
+plt.grid(True)
+plt.show()
+
+# --- Plot Wasserstein distance as a function of variance difference ---
+sigma_vals = np.linspace(0.2, 2.5, 200)
+mu_p, mu_q = 0.0, 0.0
+W_vars = [wasserstein_gauss(mu_p, s, mu_q, 1.0) for s in sigma_vals]
+
+plt.figure(figsize=(8,6))
+plt.plot(sigma_vals, W_vars)
+plt.xlabel(r"$\sigma_p$")
+plt.ylabel(r"$W_2$")
+plt.title("Wasserstein Distance vs Variance ($\mu_p = \mu_q=0, \sigma_q=1$)")
+plt.grid(True)
+plt.show()
+
+# --- Heatmap with fixed variances ---
+mu_vals = np.linspace(-2, 2, 100)
+MU_P, MU_Q = np.meshgrid(mu_vals, mu_vals)
+sigma_p, sigma_q = 1.0, 1.5
+
+W = np.sqrt((MU_P - MU_Q)**2 + (sigma_p - sigma_q)**2)
+
+plt.figure(figsize=(7,6))
+plt.contourf(MU_P, MU_Q, W, levels=50, cmap="viridis")
+plt.colorbar(label="Wasserstein Distance $W_2$")
+plt.xlabel(r"$\mu_p$")
+plt.ylabel(r"$\mu_q$")
+plt.title(fr"Wasserstein Distance Heatmap ($\sigma_p$={sigma_p}, $\sigma_q$={sigma_q})")
+plt.show()
