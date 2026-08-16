@@ -1,0 +1,99 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import matplotlib.pyplot as plt
+
+# ==========================
+# 1. Define a simple MLP
+# ==========================
+class Net(nn.Module):
+    def __init__(self, d_in, d_hidden, d_out):
+        super().__init__()
+        self.fc1 = nn.Linear(d_in, d_hidden)
+        self.fc2 = nn.Linear(d_hidden, d_out)
+
+    def forward(self, x):
+        x = torch.tanh(self.fc1(x))
+        x = self.fc2(x)
+        return x
+
+# ==========================
+# 2. Compute NTK
+# ==========================
+def compute_ntk(model, x):
+    """
+    Compute NTK matrix 
+    """
+    f = model(x)
+    grads = []
+
+    for i in range(f.shape[0]):
+        grad = torch.autograd.grad(f[i, 0], model.parameters(), retain_graph=True, create_graph=True)
+        grads.append(torch.cat([g.reshape(-1) for g in grad]))
+
+    grads = torch.stack(grads)  # [N, num_params]
+    NTK = grads @ grads.T       # Gram matrix
+    return NTK.detach()
+
+# ==========================
+# 3. Train and compare
+# ==========================
+torch.manual_seed(0)
+N = 20
+x = torch.linspace(-3, 3, N).reshape(-1, 1)
+y_true = torch.sin(x)  # target function
+
+net = Net(1, 50, 1)
+loss_fn = nn.MSELoss()
+opt = torch.optim.SGD(net.parameters(), lr=0.05)
+
+# NTK at initialization
+NTK = compute_ntk(net, x)
+f0 = net(x).detach()
+theta_inv = torch.linalg.pinv(NTK)  # pseudo-inverse
+alpha = theta_inv @ (y_true - f0)   # coefficients for NTK linearization
+
+f_ntk = f0.clone()
+
+# Store training trajectories
+preds_nn, preds_ntk = [], []
+
+for step in range(200):
+    # --- Full NN training ---
+    opt.zero_grad()
+    y_pred = net(x)
+    loss = loss_fn(y_pred, y_true)
+    loss.backward()
+    opt.step()
+
+    preds_nn.append(y_pred.detach().clone())
+
+    # --- NTK linearized dynamics (gradient flow approx) ---
+    decay = torch.exp(torch.tensor(-0.01 * step, dtype=torch.float32))
+    f_ntk = f0 + NTK @ alpha * (1 - decay)
+    preds_ntk.append(f_ntk.clone())
+
+# ==========================
+# 4. Plot results
+# ==========================
+plt.figure(figsize=(12,5))
+
+# Final fits
+plt.subplot(1,2,1)
+plt.scatter(x, y_true, label="True Function", c="black")
+plt.plot(x, preds_nn[-1], label="NN trained", c="blue")
+plt.plot(x, preds_ntk[-1], label="NTK linearization", c="red", linestyle="--")
+plt.legend()
+plt.title("Final Fit")
+
+# Training trajectories (first 50 steps)
+plt.subplot(1,2,2)
+for t in [0, 5, 10, 20, 50, 100, 199]:
+    plt.plot(x, preds_nn[t], alpha=0.5, label=f"NN step {t}" if t in [0,199] else None, c="blue")
+    plt.plot(x, preds_ntk[t], alpha=0.5, linestyle="--", label=f"NTK step {t}" if t in [0,199] else None, c="red")
+
+plt.scatter(x, y_true, c="black", s=20)
+plt.legend()
+plt.title("Training Dynamics (NN vs NTK)")
+
+plt.show()
