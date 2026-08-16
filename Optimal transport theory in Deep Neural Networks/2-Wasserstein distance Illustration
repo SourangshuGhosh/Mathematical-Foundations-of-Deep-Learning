@@ -1,0 +1,107 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import norm
+from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment
+
+np.random.seed(0)
+
+# ----------------------------------------------------------
+# 1. TWO DISTRIBUTIONS (μ and ν)
+# ----------------------------------------------------------
+
+x = np.linspace(-6,6,400)
+
+mu = norm.pdf(x,-1,1)
+nu = norm.pdf(x,2,1)
+
+plt.figure()
+
+plt.plot(x,mu,label="Distribution μ")
+plt.plot(x,nu,label="Distribution ν")
+
+plt.title("Two Probability Distributions")
+plt.xlabel("x")
+plt.ylabel("Density")
+
+plt.legend()
+plt.grid(True)
+
+plt.show()
+
+
+# ----------------------------------------------------------
+# 2. OPTIMAL TRANSPORT (EARTH MOVER INTERPRETATION)
+# ----------------------------------------------------------
+
+n = 60
+
+mu_samples = np.random.normal(-1,1,n)
+nu_samples = np.random.normal(2,1,n)
+
+cost = cdist(mu_samples.reshape(-1,1),nu_samples.reshape(-1,1))**2
+
+row,col = linear_sum_assignment(cost)
+
+plt.figure()
+
+plt.scatter(mu_samples,np.zeros(n),label="μ samples")
+plt.scatter(nu_samples,np.ones(n),label="ν samples")
+
+for i,j in zip(row,col):
+    plt.plot([mu_samples[i],nu_samples[j]],[0,1],alpha=0.3)
+
+plt.title("Optimal Transport Plan (Earth Mover's Interpretation)")
+plt.xlabel("x")
+
+plt.legend()
+plt.grid(True)
+
+plt.show()
+
+
+# ----------------------------------------------------------
+# 3. QUANTILE FUNCTION REPRESENTATION
+# ----------------------------------------------------------
+
+q = np.linspace(0.001,0.999,300)
+
+Fmu_inv = norm.ppf(q,-1,1)
+Fnu_inv = norm.ppf(q,2,1)
+
+plt.figure()
+
+plt.plot(q,Fmu_inv,label="F⁻¹_μ(q)")
+plt.plot(q,Fnu_inv,label="F⁻¹_ν(q)")
+
+plt.title("Quantile Function Representation of Wasserstein Distance")
+plt.xlabel("q")
+plt.ylabel("Quantile")
+
+plt.legend()
+plt.grid(True)
+
+plt.show()
+
+
+# ----------------------------------------------------------
+# 4. OPTIMAL TRANSPORT MAP T(x)
+# ----------------------------------------------------------
+
+x_map = np.linspace(-4,4,200)
+
+T = x_map + 3
+
+plt.figure()
+
+plt.plot(x_map,T,label="Optimal transport map T(x)")
+plt.plot(x_map,x_map,'--',label="Identity")
+
+plt.title("Optimal Transport Map $T(x)$")
+plt.xlabel("x")
+plt.ylabel("T(x)")
+
+plt.legend()
+plt.grid(True)
+
+plt.show()
