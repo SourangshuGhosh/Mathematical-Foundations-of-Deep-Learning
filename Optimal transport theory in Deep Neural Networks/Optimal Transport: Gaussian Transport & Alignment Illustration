@@ -1,0 +1,135 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import norm
+from scipy.spatial.distance import cdist
+from scipy.special import softmax
+
+# ---------------------------------------------------
+# 1. STATIC OPTIMAL TRANSPORT (1D GAUSSIANS)
+# ---------------------------------------------------
+
+x = np.linspace(-6, 6, 500)
+mu = norm.pdf(x, loc=-2, scale=1)
+nu = norm.pdf(x, loc=2, scale=1)
+
+plt.figure()
+plt.plot(x, mu)
+plt.plot(x, nu)
+plt.title("Static Optimal Transport: Source to Target Gaussian")
+plt.xlabel("x")
+plt.ylabel("Density")
+plt.show()
+
+
+# ---------------------------------------------------
+# 2. WASSERSTEIN DISTANCE VS SEPARATION
+# ---------------------------------------------------
+
+separation = np.linspace(0, 5, 100)
+W2 = separation**2
+W1 = separation
+
+plt.figure()
+plt.plot(separation, W1)
+plt.plot(separation, W2)
+plt.title("Wasserstein Distance vs Distribution Separation")
+plt.xlabel("Mean Separation")
+plt.ylabel("Distance")
+plt.show()
+
+
+# ---------------------------------------------------
+# 3. ENTROPY REGULARIZED TRANSPORT (SINKHORN EFFECT)
+# ---------------------------------------------------
+
+n = 50
+x_pts = np.linspace(-2, 2, n)
+C = cdist(x_pts.reshape(-1,1), x_pts.reshape(-1,1))**2
+
+epsilon = 0.5
+K = np.exp(-C / epsilon)
+
+plt.figure()
+plt.imshow(K)
+plt.title("Entropy-Regularized Transport Kernel (Sinkhorn)")
+plt.colorbar()
+plt.show()
+
+
+# ---------------------------------------------------
+# 4. BENAMOU–BRENIER DISPLACEMENT INTERPOLATION
+# ---------------------------------------------------
+
+t_values = np.linspace(0, 1, 6)
+
+for t in t_values:
+    mean_t = (1 - t)*(-2) + t*(2)
+    rho_t = norm.pdf(x, loc=mean_t, scale=1)
+    plt.plot(x, rho_t)
+
+plt.title("Displacement Interpolation (W2 Geodesic)")
+plt.xlabel("x")
+plt.ylabel("Density")
+plt.show()
+
+
+# ---------------------------------------------------
+# 5. NEURAL ODE / FLOW FIELD VISUALIZATION
+# ---------------------------------------------------
+
+X, Y = np.meshgrid(np.linspace(-2,2,20),
+                   np.linspace(-2,2,20))
+
+U = -Y
+V = X
+
+plt.figure()
+plt.quiver(X, Y, U, V)
+plt.title("Vector Field (Neural ODE Interpretation)")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.show()
+
+
+# ---------------------------------------------------
+# 6. WASSERSTEIN BARYCENTER (1D)
+# ---------------------------------------------------
+
+mu1 = norm.pdf(x, loc=-3, scale=1)
+mu2 = norm.pdf(x, loc=3, scale=1)
+
+barycenter = norm.pdf(x, loc=0, scale=1)
+
+plt.figure()
+plt.plot(x, mu1)
+plt.plot(x, mu2)
+plt.plot(x, barycenter)
+plt.title("Wasserstein Barycenter of Two Gaussians")
+plt.xlabel("x")
+plt.ylabel("Density")
+plt.show()
+
+
+# ---------------------------------------------------
+# 7. DOMAIN ADAPTATION (POINT CLOUD ALIGNMENT)
+# ---------------------------------------------------
+
+np.random.seed(0)
+
+source = np.random.randn(200, 2) + np.array([-2, 0])
+target = np.random.randn(200, 2) + np.array([2, 0])
+
+# simple linear feature map (learned shift)
+phi_source = source + np.array([4, 0])
+
+plt.figure()
+plt.scatter(source[:,0], source[:,1])
+plt.scatter(target[:,0], target[:,1])
+plt.title("Before Alignment (Source vs Target)")
+plt.show()
+
+plt.figure()
+plt.scatter(phi_source[:,0], phi_source[:,1])
+plt.scatter(target[:,0], target[:,1])
+plt.title("After Feature Map Alignment")
+plt.show()
