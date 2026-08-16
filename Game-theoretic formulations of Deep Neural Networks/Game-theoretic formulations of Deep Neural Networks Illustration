@@ -1,0 +1,51 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# --- 1. Min-Max (Adversarial Training Game) ---
+epsilon = np.linspace(0, 1, 100)
+empirical_loss = 0.2 + 0.3 * epsilon       # increasing with epsilon
+robust_loss = empirical_loss + 0.1*np.sin(3*epsilon)  # adversarial perturbation
+
+plt.figure(figsize=(6,4))
+plt.plot(epsilon, empirical_loss, label="Empirical Loss")
+plt.plot(epsilon, robust_loss, label="Adversarial Loss")
+plt.xlabel("Perturbation Size (ε)")
+plt.ylabel("Loss")
+plt.title("Min-Max Game Formulation (Adversarial Training)")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# --- 2. Regularization as Game (Player: Model vs Regularizer) ---
+weights = np.linspace(-3, 3, 100)
+loss = (weights - 1)**2
+reg = 0.5 * weights**2
+total = loss + reg
+
+plt.figure(figsize=(6,4))
+plt.plot(weights, loss, label="Task Loss")
+plt.plot(weights, reg, label="Regularization")
+plt.plot(weights, total, label="Total Objective")
+plt.xlabel("Weight Parameter")
+plt.ylabel("Loss Value")
+plt.title("Regularization as Game Formulation")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# --- 3. Multi-Agent View (Layers as Players) ---
+epochs = np.arange(1, 11)
+layer1 = np.exp(-0.2 * epochs) + 0.05*np.random.randn(10)
+layer2 = np.exp(-0.15 * epochs) + 0.05*np.random.randn(10)
+layer3 = np.exp(-0.1 * epochs) + 0.05*np.random.randn(10)
+
+plt.figure(figsize=(6,4))
+plt.plot(epochs, layer1, 'o-', label="Layer 1 Loss")
+plt.plot(epochs, layer2, 's-', label="Layer 2 Loss")
+plt.plot(epochs, layer3, '^-', label="Layer 3 Loss")
+plt.xlabel("Epoch")
+plt.ylabel("Layer Objective")
+plt.title("Multi-Agent Game: Layers as Players")
+plt.legend()
+plt.grid(True)
+plt.show()
