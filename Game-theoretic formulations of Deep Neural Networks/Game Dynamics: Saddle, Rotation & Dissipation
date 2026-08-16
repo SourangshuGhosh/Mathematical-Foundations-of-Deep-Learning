@@ -1,0 +1,181 @@
+"""
+Variational Inequality illustrations for DNN-style dynamics.
+
+Shows:
+ - Monotone (potential) operator: F = grad Phi, with Phi convex.
+ - Saddle (bilinear) operator: F from L(x,y) = x*y (min-max).
+ - Skew/rotational operator: pure rotation -> cyclic.
+
+Compares:
+ - Gradient step:        x_{k+1} = x_k - lr * F(x_k)
+ - Extragradient (EG):  x_half = x_k - lr * F(x_k); x_{k+1} = x_k - lr * F(x_half)
+
+Also computes an approximate VI gap on a grid for the monotone case:
+ gap(x) approx= max_y < F(x), x - y >
+(we maximize over a finite grid to approximate the sup)
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+
+# -----------------------
+# Helper / algorithms
+# -----------------------
+def grad_step(x, F, lr):
+    return x - lr * F(x)
+
+def extragradient_step(x, F, lr):
+    x_half = x - lr * F(x)
+    return x - lr * F(x_half)
+
+def simulate_iterates(x0, F, lr, steps, method="grad"):
+    x = np.array(x0, dtype=float)
+    traj = [x.copy()]
+    for k in range(steps):
+        if method == "grad":
+            x = grad_step(x, F, lr)
+        elif method == "eg":
+            x = extragradient_step(x, F, lr)
+        else:
+            raise ValueError("method must be 'grad' or 'eg'")
+        traj.append(x.copy())
+    return np.array(traj)
+
+# -----------------------
+# Operators (2D)
+# -----------------------
+
+# 1) Monotone / Potential: F = grad Phi, Phi(x,y) = 0.5*( (x-a)^2 + (y-b)^2 )
+a, b = 0.8, -0.5
+def F_potential(z):
+    x, y = z
+    return np.array([x - a, y - b])
+
+# 2) Saddle / Bilinear: L(x,y)=x*y, treat z=(x,y) with operator F = (d/dx L, -d/dy L)
+# For a min in x and max in y, the VI operator is F = [ d/dx L, - d/dy L ] = [ y, x ]
+def F_saddle(z):
+    x, y = z
+    return np.array([ y,  x ])   # note: non-monotone, leads to cycles for naive methods
+
+# 3) Skew / rotation: F(z) = R z, R is skew-symmetric -> purely rotational (no potential)
+theta = np.pi/2 * 0.7  # rotation-like skew (not a pure rotation matrix; keep skew)
+R = np.array([[0.0, -1.0],
+              [1.0,  0.0]]) * 1.0  # pure skew gives rotation effect
+def F_skew(z):
+    return R.dot(z)
+
+# For richer behavior we will include a small symmetric (dissipative) part optionally:
+def make_skew_plus_dissip(alpha=0.0):
+    S = np.eye(2) * alpha  # symmetric positive definite part (dissipation)
+    M = R + S
+    return lambda z: M.dot(z)
+
+# -----------------------
+# Plotting utilities
+# -----------------------
+def plot_vector_field(ax, F, xrange=(-2.5,2.5), yrange=(-2.5,2.5), density=20):
+    xs = np.linspace(xrange[0], xrange[1], density)
+    ys = np.linspace(yrange[0], yrange[1], density)
+    X, Y = np.meshgrid(xs, ys)
+    U = np.zeros_like(X)
+    V = np.zeros_like(Y)
+    for i in range(X.shape[0]):
+        for j in range(X.shape[1]):
+            f = F(np.array([X[i,j], Y[i,j]]))
+            U[i,j] = f[0]
+            V[i,j] = f[1]
+    # normalize for nicer arrows
+    M = np.sqrt(U**2 + V**2)
+    M[M==0] = 1.0
+    ax.streamplot(X, Y, -U, -V, density=1.2, linewidth=1)  # show descent direction -F
+    ax.quiver(X, Y, -U/M, -V/M, angles='xy', width=0.003, alpha=0.6)
+
+def plot_trajectories(F, name, lr=0.05, steps=500, initial_points=None, xrange=(-2.5,2.5), yrange=(-2.5,2.5)):
+    if initial_points is None:
+        initial_points = [np.array([1.5, 0.5]), np.array([-1.5, 1.2]), np.array([0.5, -1.5]), np.array([-0.8,-0.6])]
+    fig, axs = plt.subplots(1,2, figsize=(12,5))
+    # vector field
+    plot_vector_field(axs[0], F, xrange=xrange, yrange=yrange)
+    axs[0].set_title(f"{name}: vector field (-F shown for descent)")
+    axs[0].set_xlim(xrange); axs[0].set_ylim(yrange)
+    axs[0].axhline(0, color='k', lw=0.4); axs[0].axvline(0, color='k', lw=0.4)
+
+    # trajectories: gradient vs extragradient
+    for p0 in initial_points:
+        traj_g = simulate_iterates(p0, F, lr, steps, method="grad")
+        traj_eg = simulate_iterates(p0, F, lr, steps, method="eg")
+        axs[1].plot(traj_g[:,0], traj_g[:,1], '-', alpha=0.6, label="Grad" if (p0==initial_points[0]).all() else "")
+        axs[1].plot(traj_eg[:,0], traj_eg[:,1], '--', alpha=0.9, label="Extragradient" if (p0==initial_points[0]).all() else "")
+        axs[1].plot(p0[0], p0[1], 'o', markersize=4)
+    axs[1].set_title(f"{name}: trajectories (lr={lr})")
+    axs[1].set_xlim(xrange); axs[1].set_ylim(yrange)
+    axs[1].legend()
+    axs[1].grid(True)
+    plt.tight_layout()
+    plt.show()
+
+# -----------------------
+# 1) Monotone / Potential example
+# -----------------------
+print("Plotting MONOTONE/POTENTIAL operator")
+plot_trajectories(F_potential, "Monotone/Potential F=grad Phi", lr=0.1, steps=200,
+                  initial_points=[np.array([2.0, 1.5]), np.array([-2.0, -1.0]), np.array([1.0,-2.0])],
+                  xrange=(-3,3), yrange=(-3,3))
+
+# Compute approximate VI gap over grid for monotone case to compare algorithms
+def approx_vi_gap(F, x, grid_pts):
+    # approximate gap(x) = sup_y <F(x), x - y> by maximizing over a finite grid of y values
+    Fx = F(x)
+    diffs = x.reshape(1,2) - grid_pts  # (m,2)
+    inner = diffs.dot(Fx)              # (m,)
+    return np.max(inner)
+
+# prepare grid once
+gridx = np.linspace(-3,3,41)
+gridy = np.linspace(-3,3,41)
+YY, XX = np.meshgrid(gridy, gridx)
+grid_pts = np.vstack([XX.ravel(), YY.ravel()]).T
+
+# simulate and track approximate gap
+lr = 0.1
+steps = 200
+x0 = np.array([2.0,1.0])
+traj_g = simulate_iterates(x0, F_potential, lr, steps, method="grad")
+traj_eg = simulate_iterates(x0, F_potential, lr, steps, method="eg")
+gaps_g = [approx_vi_gap(F_potential, traj_g[k], grid_pts) for k in range(len(traj_g))]
+gaps_eg = [approx_vi_gap(F_potential, traj_eg[k], grid_pts) for k in range(len(traj_eg))]
+
+plt.figure(figsize=(6,4))
+plt.plot(gaps_g, label="GD gap")
+plt.plot(gaps_eg, label="Extragradient gap")
+plt.yscale('log')
+plt.xlabel("Iteration")
+plt.ylabel("Approx VI gap (log scale)")
+plt.title("Monotone case: Approx VI gap vs iteration")
+plt.legend()
+plt.grid(True, which='both', ls='--')
+plt.show()
+
+# -----------------------
+# 2) Saddle / Bilinear example
+# -----------------------
+print("Plotting SADDLE / BILINEAR operator")
+plot_trajectories(F_saddle, "Saddle/Bilinear F (min-max)", lr=0.05, steps=800,
+                  initial_points=[np.array([1.5, 0.5]), np.array([-1.2, 1.5]), np.array([0.2,-1.7])],
+                  xrange=(-3,3), yrange=(-3,3))
+
+# -----------------------
+# 3) Skew / Rotation example
+# -----------------------
+print("Plotting SKEW / ROTATIONAL operator (purely rotational behavior)")
+F_skew_plus = make_skew_plus_dissip(alpha=0.0)  # pure skew -> cycles
+
+plot_trajectories(F_skew_plus, "Skew (rotation) F: R z", lr=0.05, steps=700,
+                  initial_points=[np.array([1.5,0.2]), np.array([-1.2,0.8]), np.array([0.5,-1.2])],
+                  xrange=(-2.5,2.5), yrange=(-2.5,2.5))
+
+# Also show effect of adding small dissipation (symmetric positive part) -> stabilized dynamics
+print("Plotting SKEW + SMALL DISSIPATION (stabilized)")
+F_skew_stable = make_skew_plus_dissip(alpha=0.3)
+plot_trajectories(F_skew_stable, "Skew + Dissipation F: R + alpha I", lr=0.08, steps=300,
+                  initial_points=[np.array([1.2,0.6]), np.array([-1.0,1.1])],
+                  xrange=(-2.5,2.5), yrange=(-2.5,2.5))
