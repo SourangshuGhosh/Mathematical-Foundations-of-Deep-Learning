@@ -1,0 +1,97 @@
+import torch
+import torch.nn as nn
+import matplotlib.pyplot as plt
+
+# ==========================
+# 1. Simple MLP
+# ==========================
+class Net(nn.Module):
+    def __init__(self, d_in, d_hidden, d_out):
+        super().__init__()
+        self.fc1 = nn.Linear(d_in, d_hidden)
+        self.fc2 = nn.Linear(d_hidden, d_out)
+
+    def forward(self, x):
+        return torch.tanh(self.fc1(x)) @ self.fc2.weight.T + self.fc2.bias  # simple tanh MLP
+
+# ==========================
+# 2. Compute NTK at initialization
+# ==========================
+def compute_ntk(model, x):
+    f = model(x)
+    grads = []
+
+    for i in range(f.shape[0]):
+        grad = torch.autograd.grad(f[i, 0], model.parameters(), retain_graph=True, create_graph=True)
+        grads.append(torch.cat([g.reshape(-1) for g in grad]))
+
+    grads = torch.stack(grads)
+    NTK = grads @ grads.T
+    return NTK.detach()
+
+# ==========================
+# 3. Prepare dataset
+# ==========================
+torch.manual_seed(0)
+N = 50
+x = torch.linspace(-3, 3, N).reshape(-1, 1)
+y_true = torch.sin(x)
+
+# ==========================
+# 4. Initialize model
+# ==========================
+net = Net(1, 200, 1)  # large hidden layer to NTK regime
+loss_fn = nn.MSELoss()
+opt = torch.optim.SGD(net.parameters(), lr=0.05)
+
+# ==========================
+# 5. NTK linearization
+# ==========================
+f0 = net(x).detach()
+NTK = compute_ntk(net, x)
+theta_inv = torch.linalg.pinv(NTK)
+alpha = theta_inv @ (y_true - f0)
+
+# ==========================
+# 6. Training and NTK evolution
+# ==========================
+steps = 200
+preds_nn, preds_ntk = [], []
+
+for step in range(steps):
+    # Full NN training
+    opt.zero_grad()
+    y_pred = net(x)
+    loss = loss_fn(y_pred, y_true)
+    loss.backward()
+    opt.step()
+
+    preds_nn.append(y_pred.detach().clone())
+
+    # Linearized NTK prediction
+    decay = torch.exp(torch.tensor(-0.05 * step, dtype=torch.float32))  # gradient flow approx
+    f_ntk = f0 + NTK @ alpha * (1 - decay)
+    preds_ntk.append(f_ntk.clone())
+
+# ==========================
+# 7. Plot NTK regime dynamics
+# ==========================
+plt.figure(figsize=(12,5))
+
+# Final predictions
+plt.subplot(1,2,1)
+plt.scatter(x, y_true, c='black', label='True function')
+plt.plot(x, preds_nn[-1], c='blue', label='NN prediction')
+plt.plot(x, preds_ntk[-1], c='red', linestyle='--', label='NTK linearization')
+plt.title('Final Predictions in NTK Regime')
+plt.legend()
+
+# Trajectories
+plt.subplot(1,2,2)
+for t in [0, 10, 50, 100, 199]:
+    plt.plot(x, preds_nn[t], c='blue', alpha=0.5)
+    plt.plot(x, preds_ntk[t], c='red', linestyle='--', alpha=0.5)
+
+plt.scatter(x, y_true, c='black', s=20)
+plt.title('Training Dynamics (NN vs NTK)')
+plt.show()
