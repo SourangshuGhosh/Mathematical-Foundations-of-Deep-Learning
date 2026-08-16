@@ -1,0 +1,173 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import norm
+from scipy.spatial.distance import jensenshannon
+
+# ------------------------------------------------
+# GRID
+# ------------------------------------------------
+x = np.linspace(-6,6,600)
+
+# ------------------------------------------------
+# 1. TWO DISTRIBUTIONS P AND Q + MIXTURE M
+# ------------------------------------------------
+
+p = norm.pdf(x,-1,1)
+q = norm.pdf(x,1,1)
+
+p = p/np.trapz(p,x)
+q = q/np.trapz(q,x)
+
+m = 0.5*(p+q)
+
+plt.figure()
+
+plt.plot(x,p,label="P(x)")
+plt.plot(x,q,label="Q(x)")
+plt.plot(x,m,'--',label="M(x) = (P+Q)/2")
+
+plt.title("Distributions P, Q and the Mixture Distribution M")
+plt.xlabel("x")
+plt.ylabel("Density")
+
+plt.grid(True)
+plt.legend()
+
+plt.show()
+
+
+# ------------------------------------------------
+# 2. KL CONTRIBUTIONS
+# ------------------------------------------------
+
+kl_pm = p*np.log(p/m)
+kl_qm = q*np.log(q/m)
+
+plt.figure()
+
+plt.plot(x,kl_pm,label="Contribution to KL(P||M)")
+plt.plot(x,kl_qm,label="Contribution to KL(Q||M)")
+
+plt.title("Local Contributions to the Jensen-Shannon Divergence")
+plt.xlabel("x")
+plt.ylabel("Integrand value")
+
+plt.grid(True)
+plt.legend()
+
+plt.show()
+
+
+# ------------------------------------------------
+# 3. JSD AS DISTRIBUTIONS SEPARATE
+# ------------------------------------------------
+
+separation = np.linspace(0,6,100)
+jsd_vals = []
+
+for d in separation:
+
+    p = norm.pdf(x,-d/2,1)
+    q = norm.pdf(x,d/2,1)
+
+    p = p/np.trapz(p,x)
+    q = q/np.trapz(q,x)
+
+    jsd = jensenshannon(p,q,base=2)**2
+    jsd_vals.append(jsd)
+
+plt.figure()
+
+plt.plot(separation,jsd_vals)
+
+plt.title("Jensen-Shannon Divergence vs Distribution Separation")
+plt.xlabel("Distance between means")
+plt.ylabel("JSD")
+
+plt.grid(True)
+
+plt.show()
+
+
+# ------------------------------------------------
+# 4. BOUNDEDNESS OF JSD
+# ------------------------------------------------
+
+P = np.array([1,0])
+Q = np.array([0,1])
+
+max_jsd = jensenshannon(P,Q,base=2)**2
+
+labels = ["Identical distributions","Maximally different"]
+
+values = [0,max_jsd]
+
+plt.figure()
+
+plt.bar(labels,values)
+
+plt.title("Boundedness of Jensen-Shannon Divergence (0 ≤ JSD ≤ 1)")
+plt.ylabel("JSD")
+
+plt.grid(True)
+
+plt.show()
+
+
+# ------------------------------------------------
+# 5. ENTROPY INTERPRETATION
+# ------------------------------------------------
+
+def entropy(p):
+
+    p = p[p>0]
+    return -np.sum(p*np.log2(p))
+
+entropies=[]
+mix_entropies=[]
+diff=[]
+
+for d in separation:
+
+    p = norm.pdf(x,-d/2,1)
+    q = norm.pdf(x,d/2,1)
+
+    p=p/np.trapz(p,x)
+    q=q/np.trapz(q,x)
+
+    m=0.5*(p+q)
+
+    Hp=entropy(p)
+    Hq=entropy(q)
+    Hm=entropy(m)
+
+    entropies.append(0.5*(Hp+Hq))
+    mix_entropies.append(Hm)
+    diff.append(Hm-0.5*(Hp+Hq))
+
+plt.figure()
+
+plt.plot(separation,mix_entropies,label="H((P+Q)/2)")
+plt.plot(separation,entropies,label="(H(P)+H(Q))/2")
+
+plt.title("Entropy Interpretation of Jensen-Shannon Divergence")
+plt.xlabel("Distribution separation")
+plt.ylabel("Entropy")
+
+plt.grid(True)
+plt.legend()
+
+plt.show()
+
+
+plt.figure()
+
+plt.plot(separation,diff)
+
+plt.title("JSD = H((P+Q)/2) − ½H(P) − ½H(Q)")
+plt.xlabel("Distribution separation")
+plt.ylabel("JSD")
+
+plt.grid(True)
+
+plt.show() 
