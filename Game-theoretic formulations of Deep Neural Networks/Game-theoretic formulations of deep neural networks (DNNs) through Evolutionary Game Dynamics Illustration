@@ -1,0 +1,65 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.integrate import solve_ivp
+
+# --- 1. Replicator Dynamics for "weights" ---
+A = np.array([[0, -1, 1],
+              [1, 0, -1],
+              [-1, 1, 0]])  # Rock-Paper-Scissors style payoff
+
+def replicator_dynamics(t, w):
+    w = np.maximum(w, 1e-8)
+    w = w / np.sum(w)
+    payoff = A @ w
+    avg_payoff = w @ payoff
+    return w * (payoff - avg_payoff)
+
+w0 = np.array([0.3, 0.4, 0.3])
+sol = solve_ivp(replicator_dynamics, (0, 60), w0, t_eval=np.linspace(0, 60, 1000))
+
+plt.figure(figsize=(7,5))
+plt.plot(sol.t, sol.y[0], label="Weight 1")
+plt.plot(sol.t, sol.y[1], label="Weight 2")
+plt.plot(sol.t, sol.y[2], label="Weight 3")
+plt.xlabel("Time")
+plt.ylabel("Population Share")
+plt.title("Replicator Dynamics as Gradient Descent")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+# --- 2. Min-Max Game (Adversarial Training Dynamics) ---
+def saddle_dynamics(t, z):
+    w, delta = z
+    dw = -delta   # descent in w
+    ddelta = w    # ascent in delta
+    return [dw, ddelta]
+
+z0 = [1.0, 0.5]
+sol = solve_ivp(saddle_dynamics, (0, 30), z0, t_eval=np.linspace(0, 30, 1000))
+
+plt.figure(figsize=(6,6))
+plt.plot(sol.y[0], sol.y[1])
+plt.xlabel("Classifier param (w)")
+plt.ylabel("Adversary (δ)")
+plt.title("Min-Max Dynamics (Adversarial Training)")
+plt.grid(True)
+plt.show()
+
+
+# --- 3. Cooperative Game (Potential Dynamics across layers) ---
+def potential_dynamics(t, z):
+    x, y = z
+    return [-x, -y]   # gradient descent on Phi = (x^2+y^2)/2
+
+z0 = [2.0, -1.0]
+sol = solve_ivp(potential_dynamics, (0, 10), z0, t_eval=np.linspace(0, 10, 300))
+
+plt.figure(figsize=(6,6))
+plt.plot(sol.y[0], sol.y[1])
+plt.xlabel("Layer 1 state")
+plt.ylabel("Layer 2 state")
+plt.title("Cooperative Game (Shared Potential)")
+plt.grid(True)
+plt.show()
