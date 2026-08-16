@@ -1,0 +1,180 @@
+"""
+Game-theoretic visualizations for DNN-style games:
+ - Saddle (min-max) game (toy 2D)
+ - Potential/cooperative game (toy 2D)
+ - Replicator dynamics for Rock-Paper-Scissors (3-player simplex cycles)
+
+Run in a Jupyter notebook or plain Python. Requires numpy, matplotlib.
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+
+# --------------------------
+# 1) Min-Max (saddle) game
+#    Example objective: L(x,y) = x * y  (simple bilinear saddle)
+#    Player X minimizes in x; Player Y maximizes in y
+# --------------------------
+def saddle_loss(x, y):
+    return x * y
+
+def saddle_grad(x, y):
+    # grad_x L = y  ; grad_y L = x
+    return y, x
+
+def simulate_gradient_descent_ascent(x0, y0, lr_x, lr_y, steps=200):
+    x, y = x0, y0
+    traj = [(x, y)]
+    for _ in range(steps):
+        gx, gy = saddle_grad(x, y)
+        # X does descent (minimize): x <- x - lr_x * grad_x
+        x = x - lr_x * gx
+        # Y does ascent (maximize): y <- y + lr_y * grad_y
+        y = y + lr_y * gy
+        traj.append((x, y))
+    return np.array(traj)
+
+# --------------------------
+# 2) Potential (cooperative) game
+#    Shared objective: Phi(x,y) = 0.5*(x - a)^2 + 0.5*(y - b)^2
+#    Both players minimize same objective -> gradient flow toward (a,b)
+# --------------------------
+a, b = 1.0, -0.5
+def phi(x, y):
+    return 0.5*(x - a)**2 + 0.5*(y - b)**2
+
+def phi_grad(x, y):
+    # grad_x Phi = (x - a) ; grad_y = (y - b)
+    return (x - a), (y - b)
+
+def simulate_cooperative(x0, y0, lr=0.05, steps=200):
+    x, y = x0, y0
+    traj = [(x,y)]
+    for _ in range(steps):
+        gx, gy = phi_grad(x, y)
+        x = x - lr * gx
+        y = y - lr * gy
+        traj.append((x,y))
+    return np.array(traj)
+
+# --------------------------
+# 3) Replicator dynamics for Rock-Paper-Scissors
+#    Payoff matrix (zero-sum cyclic):
+#    A = [[0, -1, 1],
+#         [1,  0,-1],
+#         [-1, 1, 0]]
+#    Replicator ODE: p_i' = p_i * ((A p)_i - p^T A p)
+# --------------------------
+A = np.array([[0, -1, 1],
+              [1,  0, -1],
+              [-1, 1,  0]], dtype=float)
+
+def replicator_step(p, dt=0.01):
+    Ap = A.dot(p)
+    phi = p.dot(Ap)
+    dp = p * (Ap - phi)
+    p_next = p + dt * dp
+    # project to simplex and clip
+    p_next = np.clip(p_next, 1e-12, None)
+    p_next = p_next / p_next.sum()
+    return p_next
+
+def simulate_replicator(p0, steps=200, dt=0.05):
+    traj = [p0.copy()]
+    p = p0.copy()
+    for _ in range(steps):
+        p = replicator_step(p, dt)
+        traj.append(p.copy())
+    return np.array(traj)
+
+# --------------------------
+# Plotting
+# --------------------------
+plt.figure(figsize=(6,4))
+
+# 1: Saddle plot (vector field + trajectories)
+#ax1 = fig.add_subplot(1, 3, 1)
+xs = np.linspace(-2.5, 2.5, 25)
+ys = np.linspace(-2.5, 2.5, 25)
+X, Y = np.meshgrid(xs, ys)
+
+# Vector field: combined gradient-descent-ascent velocity field
+U = np.zeros_like(X)  # dx/dt (X-descent)
+V = np.zeros_like(Y)  # dy/dt (Y-ascent)
+lrx, lry = 0.05, 0.05
+for i in range(X.shape[0]):
+    for j in range(X.shape[1]):
+        gx, gy = saddle_grad(X[i,j], Y[i,j])
+        U[i,j] = -lrx * gx   # descent direction for x
+        V[i,j] = +lry * gy   # ascent direction for y
+
+plt.streamplot(X, Y, U, V, density=1.2, linewidth=1, arrowsize=1)
+plt.title("Min-Max (Saddle) dynamics: L(x,y)=x*y")
+plt.xlabel("x (minimizer)")
+plt.ylabel("y (maximizer)")
+# few initializations
+init_points = [(-1.5, -1.0), (-1.5, 1.5), (1.0, -1.5), (1.5, 1.0)]
+for p0 in init_points:
+    traj = simulate_gradient_descent_ascent(p0[0], p0[1], lrx, lry, steps=500)
+    plt.plot(traj[:,0], traj[:,1], '-', lw=1.5)
+    plt.plot(traj[0,0], traj[0,1], 'o')  # start
+plt.xlim(-2.5, 2.5)
+plt.ylim(-2.5, 2.5)
+plt.axhline(0, color='k', lw=0.5); plt.axvline(0, color='k', lw=0.5)
+plt.show();
+
+
+plt.figure(figsize=(6,4))
+# 2: Potential/cooperative game (vector field + trajectories)
+#ax2 = fig.add_subplot(1, 3, 2)
+X, Y = np.meshgrid(np.linspace(-2.5, 3.5, 25), np.linspace(-3.0, 2.0, 25))
+U = np.zeros_like(X)
+V = np.zeros_like(Y)
+lr = 0.08
+for i in range(X.shape[0]):
+    for j in range(X.shape[1]):
+        gx, gy = phi_grad(X[i,j], Y[i,j])
+        U[i,j] = -lr * gx
+        V[i,j] = -lr * gy
+
+plt.streamplot(X, Y, U, V, density=1.2)
+plt.title("Potential / Cooperative game (gradient descent on shared Phi)")
+plt.xlabel("x")
+plt.ylabel("y")
+for p0 in [(-2.0, 1.5), (2.5, -2.5), (0.0, 2.0), (3.0, 1.0)]:
+    traj = simulate_cooperative(p0[0], p0[1], lr=lr, steps=300)
+    plt.plot(traj[:,0], traj[:,1], '-', lw=1.5)
+    plt.plot(traj[0,0], traj[0,1], 'o')
+# mark the potential minimizer
+plt.plot(a, b, 'k*', markersize=10, label='(a,b) target')
+plt.legend()
+plt.xlim(-2.5, 3.5);
+plt.ylim(-3.0, 2.0)
+
+
+plt.figure(figsize=(6,4))
+# 3: Replicator dynamics (RPS) on simplex (2D projection)
+#ax3 = fig.add_subplot(1, 3, 3)
+# create barycentric coordinates for simplex plotting
+def barycentric(coords):
+    # coords: (n_points,3) -> (x,y)
+    # vertices: (0,0), (1,0), (0.5, sqrt(3)/2)
+    v0 = np.array([0.0, 0.0])
+    v1 = np.array([1.0, 0.0])
+    v2 = np.array([0.5, np.sqrt(3)/2.0])
+    return coords[:,0,None]*v0 + coords[:,1,None]*v1 + coords[:,2,None]*v2
+
+# sample initial points and simulate
+inits = [np.array([0.9, 0.05, 0.05]), np.array([0.1, 0.8, 0.1]), np.array([0.3,0.3,0.4])]
+for p0 in inits:
+    traj = simulate_replicator(p0, steps=400, dt=0.06)
+    xy = barycentric(traj)
+    plt.plot(xy[:,0], xy[:,1], '-')
+    plt.plot(xy[0,0], xy[0,1], 'o')
+
+# draw triangle edges
+verts = np.array([[0.0,0.0],[1.0,0.0],[0.5,np.sqrt(3)/2.0],[0.0,0.0]])
+plt.plot(verts[:,0], verts[:,1], 'k-')
+plt.title("Replicator dynamics (Rock-Paper-Scissors) - cyclic behavior")
+plt.xticks([]);
+plt.yticks([])
+plt.show()
