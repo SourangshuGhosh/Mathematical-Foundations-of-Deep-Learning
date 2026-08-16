@@ -1,0 +1,176 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import norm
+from scipy.spatial.distance import cdist
+
+# -----------------------------------------
+# 1. MONTE / MONGE TRANSPORT MAP
+# -----------------------------------------
+
+x = np.linspace(-4,4,400)
+
+mu = norm.pdf(x,-2,0.8)
+nu = norm.pdf(x,2,0.8)
+
+plt.figure()
+
+plt.plot(x,mu,label="Source distribution μ")
+plt.plot(x,nu,label="Target distribution ν")
+
+for i in range(0,len(x),40):
+    plt.arrow(x[i],mu[i],4,0,head_width=0.01,length_includes_head=True)
+
+plt.title("Monge Optimal Transport Map")
+plt.xlabel("x")
+plt.ylabel("Density")
+plt.grid(True)
+plt.legend()
+plt.show()
+
+
+
+# -----------------------------------------
+# 2. KANTOROVICH TRANSPORT PLAN
+# -----------------------------------------
+
+n=50
+xs=np.linspace(-2,2,n)
+
+C=cdist(xs.reshape(-1,1),xs.reshape(-1,1))**2
+
+transport=np.exp(-C)
+
+plt.figure()
+
+plt.imshow(transport)
+plt.colorbar()
+
+plt.title("Kantorovich Transport Plan γ(x,y)")
+plt.xlabel("y")
+plt.ylabel("x")
+
+plt.show()
+
+
+
+# -----------------------------------------
+# 3. WASSERSTEIN DISTANCE GEOMETRY
+# -----------------------------------------
+
+separation=np.linspace(0,4,100)
+
+W1=separation
+W2=separation**2
+
+plt.figure()
+
+plt.plot(separation,W1,label="W1 distance")
+plt.plot(separation,W2,label="W2 distance")
+
+plt.title("Wasserstein Distance vs Distribution Separation")
+plt.xlabel("Mean separation")
+plt.ylabel("Distance")
+
+plt.grid(True)
+plt.legend()
+
+plt.show()
+
+
+
+# -----------------------------------------
+# 4. WGAN GENERATOR VS REAL DATA
+# -----------------------------------------
+
+real=np.random.randn(200,2)
+fake=np.random.randn(200,2)+np.array([3,0])
+
+plt.figure()
+
+plt.scatter(real[:,0],real[:,1],label="Real data")
+plt.scatter(fake[:,0],fake[:,1],label="Generated samples")
+
+plt.title("Distribution mismatch in GAN training")
+plt.grid(True)
+plt.legend()
+
+plt.show()
+
+
+
+# -----------------------------------------
+# 5. DOMAIN ADAPTATION VIA OT
+# -----------------------------------------
+
+source=np.random.randn(200,2)+np.array([-3,0])
+target=np.random.randn(200,2)+np.array([3,0])
+
+mapped=source+np.array([6,0])
+
+plt.figure()
+
+plt.scatter(source[:,0],source[:,1],label="Source domain")
+plt.scatter(target[:,0],target[:,1],label="Target domain")
+
+plt.title("Before OT Alignment")
+plt.grid(True)
+plt.legend()
+
+plt.show()
+
+
+plt.figure()
+
+plt.scatter(mapped[:,0],mapped[:,1],label="Mapped source")
+plt.scatter(target[:,0],target[:,1],label="Target domain")
+
+plt.title("After Optimal Transport Alignment")
+plt.grid(True)
+plt.legend()
+
+plt.show()
+
+
+
+# -----------------------------------------
+# 6. SINKHORN REGULARIZATION
+# -----------------------------------------
+
+eps=0.5
+kernel=np.exp(-C/eps)
+
+plt.figure()
+
+plt.imshow(kernel)
+plt.colorbar()
+
+plt.title("Entropy Regularized Transport (Sinkhorn Kernel)")
+plt.xlabel("y")
+plt.ylabel("x")
+
+plt.show()
+
+
+
+# -----------------------------------------
+# 7. WASSERSTEIN BARYCENTER
+# -----------------------------------------
+
+mu1=norm.pdf(x,-3,1)
+mu2=norm.pdf(x,3,1)
+mu3=norm.pdf(x,0,1)
+
+plt.figure()
+
+plt.plot(x,mu1,label="μ1")
+plt.plot(x,mu2,label="μ2")
+plt.plot(x,mu3,label="Wasserstein barycenter")
+
+plt.title("Wasserstein Barycenter of Distributions")
+plt.xlabel("x")
+plt.ylabel("Density")
+
+plt.grid(True)
+plt.legend()
+
+plt.show()
