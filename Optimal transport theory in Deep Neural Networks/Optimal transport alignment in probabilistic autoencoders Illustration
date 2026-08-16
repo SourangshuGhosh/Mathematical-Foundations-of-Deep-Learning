@@ -1,0 +1,116 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import multivariate_normal
+from scipy.optimize import linear_sum_assignment
+from scipy.spatial.distance import cdist
+
+np.random.seed(0)
+
+# ============================================================
+# 1. LATENT DISTRIBUTION vs PRIOR
+# ============================================================
+
+mean_q = np.array([1.5, 1.0])
+cov_q = np.array([[1,0.5],[0.5,1]])
+
+mean_p = np.array([0,0])
+cov_p = np.eye(2)
+
+q_samples = np.random.multivariate_normal(mean_q,cov_q,400)
+p_samples = np.random.multivariate_normal(mean_p,cov_p,400)
+
+plt.figure()
+
+plt.scatter(q_samples[:,0],q_samples[:,1],alpha=0.5,label="Encoded latent distribution q(z|x)")
+plt.scatter(p_samples[:,0],p_samples[:,1],alpha=0.5,label="Prior distribution p(z)")
+
+plt.title("Mismatch Between Latent Distribution and Prior")
+plt.xlabel("z₁")
+plt.ylabel("z₂")
+plt.legend()
+plt.grid(True)
+
+plt.show()
+
+
+# ============================================================
+# 2. OPTIMAL TRANSPORT COUPLING
+# ============================================================
+
+n=80
+
+data = np.random.multivariate_normal([2,0],[[1,0],[0,1]],n)
+generated = np.random.multivariate_normal([-2,0],[[1,0],[0,1]],n)
+
+cost_matrix = cdist(data,generated)
+
+row_ind,col_ind = linear_sum_assignment(cost_matrix)
+
+plt.figure()
+
+plt.scatter(data[:,0],data[:,1],label="True data samples")
+plt.scatter(generated[:,0],generated[:,1],label="Generated samples")
+
+for i,j in zip(row_ind,col_ind):
+    plt.plot([data[i,0],generated[j,0]],[data[i,1],generated[j,1]],alpha=0.2)
+
+plt.title("Optimal Transport Coupling Between Distributions")
+plt.xlabel("x₁")
+plt.ylabel("x₂")
+plt.legend()
+plt.grid(True)
+
+plt.show()
+
+
+# ============================================================
+# 3. DATA DISTRIBUTION vs DECODED DISTRIBUTION
+# ============================================================
+
+true_data = np.random.normal(0,1,500)
+decoded = np.random.normal(0.7,1.2,500)
+
+plt.figure()
+
+plt.hist(true_data,bins=40,density=True,alpha=0.6,label="True data distribution")
+plt.hist(decoded,bins=40,density=True,alpha=0.6,label="Decoded distribution")
+
+plt.title("Mismatch Between Decoded and True Data Distribution")
+plt.xlabel("x")
+plt.ylabel("Density")
+plt.legend()
+plt.grid(True)
+
+plt.show()
+
+
+# ============================================================
+# 4. EFFECT OF ENTROPY-REGULARIZED OT (SMOOTH COUPLING)
+# ============================================================
+
+epsilon_values=[0.01,0.5,2]
+
+x = np.linspace(-4,4,200)
+
+plt.figure()
+
+for eps in epsilon_values:
+
+    p = np.exp(-(x-1)**2/2)
+    q = np.exp(-(x+1)**2/2)
+
+    p = p/np.sum(p)
+    q = q/np.sum(q)
+
+    smooth = (1-eps*0.1)*p + (eps*0.1)*q
+    smooth = smooth/np.sum(smooth)
+
+    plt.plot(x,smooth,label=f"Entropy regularization ε={eps}")
+
+plt.title("Effect of Entropy-Regularized Optimal Transport")
+plt.xlabel("x")
+plt.ylabel("Probability density")
+plt.legend()
+plt.grid(True)
+
+plt.show()
