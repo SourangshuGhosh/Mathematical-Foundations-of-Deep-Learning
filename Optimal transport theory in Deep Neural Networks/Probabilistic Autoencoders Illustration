@@ -1,0 +1,88 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import multivariate_normal
+
+np.random.seed(0)
+
+# ======================================================
+# 1. DATA DISTRIBUTION
+# ======================================================
+
+mean_data = [2,2]
+cov_data = [[1,0.6],[0.6,1]]
+
+data = np.random.multivariate_normal(mean_data,cov_data,400)
+
+plt.figure()
+
+plt.scatter(data[:,0],data[:,1],alpha=0.6)
+
+plt.title("Observed Data Distribution $p_{data}(x)$")
+plt.xlabel("$x_1$")
+plt.ylabel("$x_2$")
+
+plt.grid(True)
+
+plt.show()
+
+
+# ======================================================
+# 2. ENCODER: LATENT DISTRIBUTION q(z|x)
+# ======================================================
+
+latent_mean = [0.5,-0.5]
+latent_cov = [[0.8,0],[0,0.5]]
+
+latent_samples = np.random.multivariate_normal(latent_mean,latent_cov,400)
+
+plt.figure()
+
+plt.scatter(latent_samples[:,0],latent_samples[:,1],alpha=0.6)
+
+plt.title("Variational Posterior $q_\\phi(z|x)$ in Latent Space")
+plt.xlabel("$z_1$")
+plt.ylabel("$z_2$")
+
+plt.grid(True)
+
+plt.show()
+
+
+# ======================================================
+# 3. PRIOR DISTRIBUTION p(z)
+# ======================================================
+
+prior_samples = np.random.multivariate_normal([0,0],[[1,0],[0,1]],400)
+
+plt.figure()
+
+plt.scatter(prior_samples[:,0],prior_samples[:,1],alpha=0.6)
+
+plt.title("Latent Prior Distribution $p(z)=\\mathcal{N}(0,I)$")
+plt.xlabel("$z_1$")
+plt.ylabel("$z_2$")
+
+plt.grid(True)
+
+plt.show()
+
+
+# ======================================================
+# 4. DECODER: RECONSTRUCTED DATA
+# ======================================================
+
+reconstructed = data + np.random.normal(0,0.5,data.shape)
+
+plt.figure()
+
+plt.scatter(data[:,0],data[:,1],alpha=0.4,label="Original data")
+plt.scatter(reconstructed[:,0],reconstructed[:,1],alpha=0.4,label="Reconstructed data")
+
+plt.title("Decoder Reconstruction $p_\\theta(x|z)$")
+plt.xlabel("$x_1$")
+plt.ylabel("$x_2$")
+
+plt.legend()
+plt.grid(True)
+
+plt.show()
